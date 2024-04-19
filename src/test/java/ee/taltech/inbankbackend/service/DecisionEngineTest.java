@@ -1,73 +1,52 @@
 package ee.taltech.inbankbackend.service;
 
-import ee.taltech.inbankbackend.model.DecisionDTO;
-import org.junit.jupiter.api.BeforeEach;
+import ee.taltech.inbankbackend.dto.DecisionDTO;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ExtendWith(MockitoExtension.class)
 class DecisionEngineTest {
 
-    @InjectMocks
-    private DecisionEngine decisionEngine;
+    private DecisionEngine decisionEngine = new DecisionEngine();
+    private final String debtorPersonalCode = "37605030299";
+    private final String segment1PersonalCode = "50307172740";
+    private final String segment2PersonalCode = "38411266610";
+    private final String segment3PersonalCode = "35006069515";
 
-    private String debtorPersonalCode;
-    private String segment1PersonalCode;
-    private String segment2PersonalCode;
-    private String segment3PersonalCode;
+    @Test
+    void givenDebtorPersonalCode_whenCalculatingApprovedLoan_thenShouldReturnNegativeDecision() {
+        DecisionDTO expected = new DecisionDTO(null, null, "Credit too low, no valid loan found!");
 
-    @BeforeEach
-    void setUp() {
-        debtorPersonalCode = "37605030299";
-        segment1PersonalCode = "50307172740";
-        segment2PersonalCode = "38411266610";
-        segment3PersonalCode = "35006069515";
+        DecisionDTO actual = decisionEngine.calculateApprovedLoan(debtorPersonalCode, 12);
+
+        assertEquals(expected, actual);
     }
 
     @Test
-    void testDebtorPersonalCode() {
-        DecisionDTO decision = decisionEngine.calculateApprovedLoan(debtorPersonalCode, 4000, 12);
-        assert Objects.equals(decision.getErrorMessage(), "No valid loan found!");
+    void givenSegment1PersonalCode_whenCalculatingApprovedLoan_thenShouldApproveWithAdjustedLoanPeriod() {
+        DecisionDTO expected = new DecisionDTO(2000, 20, null);
+
+        DecisionDTO actual = decisionEngine.calculateApprovedLoan(segment1PersonalCode, 12);
+
+        assertEquals(expected, actual);
     }
 
     @Test
-    void testSegment1PersonalCode() {
-        DecisionDTO decision = decisionEngine.calculateApprovedLoan(segment1PersonalCode, 4000, 12);
-        assertEquals(2000, decision.getLoanAmount());
-        assertEquals(20, decision.getLoanPeriod());
+    void givenSegment2PersonalCode_whenCalculatingApprovedLoan_thenShouldApprove() {
+        DecisionDTO expected = new DecisionDTO(3600, 12, null);
+
+        DecisionDTO actual = decisionEngine.calculateApprovedLoan(segment2PersonalCode, 12);
+
+        assertEquals(expected, actual);
     }
 
     @Test
-    void testSegment2PersonalCode() {
-        DecisionDTO decision = decisionEngine.calculateApprovedLoan(segment2PersonalCode, 4000, 12);
-        assertEquals(3600, decision.getLoanAmount());
-        assertEquals(12, decision.getLoanPeriod());
-    }
+    void givenSegment3PersonalCode_whenCalculatingApprovedLoan_thenShouldApprove() {
+        DecisionDTO expected = new DecisionDTO(10000, 12, null);
 
-    @Test
-    void testSegment3PersonalCode() {
-        DecisionDTO decision = decisionEngine.calculateApprovedLoan(segment3PersonalCode, 4000, 12);
-        assertEquals(10000, decision.getLoanAmount());
-        assertEquals(12, decision.getLoanPeriod());
-    }
+        DecisionDTO actual = decisionEngine.calculateApprovedLoan(segment3PersonalCode, 12);
 
-    @Test
-    void testFindSuitableLoanPeriod() {
-        DecisionDTO decision = decisionEngine.calculateApprovedLoan(segment2PersonalCode, 2000, 12);
-        assertEquals(3600, decision.getLoanAmount());
-        assertEquals(12, decision.getLoanPeriod());
-    }
-
-    @Test
-    void testNoValidLoanFound() {
-        DecisionDTO decision = decisionEngine.calculateApprovedLoan(debtorPersonalCode, 10000, 60);
-        assert Objects.equals(decision.getErrorMessage(), "No valid loan found!");
+        assertEquals(expected, actual);
     }
 }
 

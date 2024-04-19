@@ -1,7 +1,7 @@
 package ee.taltech.inbankbackend.service;
 
 import ee.taltech.inbankbackend.config.DecisionEngineConstants;
-import ee.taltech.inbankbackend.model.DecisionDTO;
+import ee.taltech.inbankbackend.dto.DecisionDTO;
 import org.springframework.stereotype.Service;
 
 /**
@@ -12,25 +12,20 @@ import org.springframework.stereotype.Service;
 @Service
 public class DecisionEngine {
 
-    /**
-     * Calculates the maximum loan amount and period for the customer based on their ID code,
-     * the requested loan amount and the loan period.
-     * The loan period must be between 12 and 60 months (inclusive).
-     * The loan amount must be between 2000 and 10000€ months (inclusive).
-     */
-    public DecisionDTO calculateApprovedLoan(String personalCode, int loanAmount, int loanPeriod) {
+    public DecisionDTO calculateApprovedLoan(String personalCode, int loanPeriod) {
         int creditModifier = getCreditModifier(personalCode);
-        if(creditModifier == 0) {
-            return new DecisionDTO(null, null, "No valid loan found!");
+
+        if (creditModifier == 0) {
+            return new DecisionDTO(null, null, "Credit too low, no valid loan found!");
         }
 
         int maxAvailableLoanAmount = creditModifier * loanPeriod;
 
-        if(maxAvailableLoanAmount >= DecisionEngineConstants.MAXIMUM_LOAN_AMOUNT) {
+        if (maxAvailableLoanAmount >= DecisionEngineConstants.MAXIMUM_LOAN_AMOUNT) {
             return new DecisionDTO(DecisionEngineConstants.MAXIMUM_LOAN_AMOUNT, loanPeriod, null);
         }
 
-        if(maxAvailableLoanAmount <= DecisionEngineConstants.MINIMUM_LOAN_AMOUNT) {
+        if (maxAvailableLoanAmount <= DecisionEngineConstants.MINIMUM_LOAN_AMOUNT) {
             int adjustedLoanPeriod = DecisionEngineConstants.MINIMUM_LOAN_AMOUNT / creditModifier;
             return new DecisionDTO(DecisionEngineConstants.MINIMUM_LOAN_AMOUNT, adjustedLoanPeriod, null);
         }

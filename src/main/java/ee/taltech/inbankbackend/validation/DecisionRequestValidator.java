@@ -4,11 +4,9 @@ import com.github.vladislavgoltjajev.personalcode.exception.PersonalCodeExceptio
 import com.github.vladislavgoltjajev.personalcode.locale.estonia.EstonianPersonalCodeParser;
 import com.github.vladislavgoltjajev.personalcode.locale.estonia.EstonianPersonalCodeValidator;
 import ee.taltech.inbankbackend.config.DecisionEngineConstants;
-import ee.taltech.inbankbackend.model.DecisionRequestDTO;
+import ee.taltech.inbankbackend.dto.DecisionRequestDTO;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
-
-import java.time.Period;
 
 public class DecisionRequestValidator implements Validator {
 
@@ -24,26 +22,25 @@ public class DecisionRequestValidator implements Validator {
     public void validate(Object target, Errors errors) {
         DecisionRequestDTO request = (DecisionRequestDTO) target;
 
-        if (!personalCodeValidator.isValid(request.getPersonalCode())) {
+        if (!personalCodeValidator.isValid(request.personalCode())) {
             throw new ValidationException("Invalid personal ID code!");
         }
 
         try {
-            Period personAge = personalCodeParser.getAge(request.getPersonalCode());
-            int personAgeInMonths = personAge.getYears() * 12 + personAge.getMonths();
+            long personAgeInMonths = personalCodeParser.getAge(request.personalCode()).toTotalMonths();
 
-            if(personAgeInMonths < DecisionEngineConstants.LOWER_AGE_LIMIT_IN_MONTHS || personAgeInMonths > DecisionEngineConstants.UPPER_AGE_LIMIT_IN_MONTHS) {
+            if (personAgeInMonths < DecisionEngineConstants.LOWER_AGE_LIMIT_IN_MONTHS || personAgeInMonths > DecisionEngineConstants.UPPER_AGE_LIMIT_IN_MONTHS) {
                 throw new ValidationException("Invalid age!");
             }
         } catch (PersonalCodeException e) {
-            throw new ValidationException(e.getMessage());
+            throw new ValidationException("Invalid age!");
         }
 
-        if (request.getLoanAmount() > DecisionEngineConstants.MAXIMUM_LOAN_AMOUNT || request.getLoanAmount() < DecisionEngineConstants.MINIMUM_LOAN_AMOUNT) {
+        if (request.loanAmount() > DecisionEngineConstants.MAXIMUM_LOAN_AMOUNT || request.loanAmount() < DecisionEngineConstants.MINIMUM_LOAN_AMOUNT) {
             throw new ValidationException("Invalid loan amount!");
         }
 
-        if (request.getLoanPeriod() < DecisionEngineConstants.MINIMUM_LOAN_PERIOD || request.getLoanPeriod() > DecisionEngineConstants.MAXIMUM_LOAN_PERIOD) {
+        if (request.loanPeriod() < DecisionEngineConstants.MINIMUM_LOAN_PERIOD || request.loanPeriod() > DecisionEngineConstants.MAXIMUM_LOAN_PERIOD) {
             throw new ValidationException("Invalid loan period!");
         }
     }

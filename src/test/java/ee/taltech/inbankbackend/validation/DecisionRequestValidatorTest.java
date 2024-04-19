@@ -1,12 +1,16 @@
 package ee.taltech.inbankbackend.validation;
 
 import ee.taltech.inbankbackend.config.DecisionEngineConstants;
-import ee.taltech.inbankbackend.model.DecisionRequestDTO;
+import ee.taltech.inbankbackend.dto.DecisionRequestDTO;
 import org.junit.jupiter.api.Test;
-import org.springframework.validation.BeanPropertyBindingResult;
+import org.junit.jupiter.api.function.Executable;
+import org.mockito.Mock;
+import org.springframework.validation.Errors;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class DecisionRequestValidatorTest {
 
@@ -14,74 +18,102 @@ public class DecisionRequestValidatorTest {
 
     private final String validPersonalCode = "50307172740";
 
-    @Test
-    void testInvalidPersonalCode() {
-        String invalidPersonalCode = "12345678901";
-        DecisionRequestDTO request = new DecisionRequestDTO(invalidPersonalCode, 4000, 12);
-        BeanPropertyBindingResult errors = new BeanPropertyBindingResult(request, "request");
+    @Mock
+    private Errors errors;
 
-        ValidationException exception = assertThrows(ValidationException.class,
+    @Test
+    void givenInvalidPersonalCode_whenRequestValidation_thenShouldThrowValidationException() {
+        String invalidPersonalCode = "12345678901";
+
+        DecisionRequestDTO request = new DecisionRequestDTO(invalidPersonalCode, 4000, 12);
+
+        ValidationException actual = assertThrows(ValidationException.class,
                 () -> validator.validate(request, errors));
-        assertEquals("Invalid personal ID code!", exception.getValidationError());
+        assertEquals("Invalid personal ID code!", actual.getValidationError());
     }
 
     @Test
-    void testInvalidLoanAmount() {
+    void givenTooLowLoanAmount_whenRequestValidation_thenShouldThrowValidationException() {
         int tooLowLoanAmount = DecisionEngineConstants.MINIMUM_LOAN_AMOUNT - 1;
+
+        DecisionRequestDTO request = new DecisionRequestDTO(validPersonalCode, tooLowLoanAmount, 12);
+
+        ValidationException actual = assertThrows(ValidationException.class,
+                () -> validator.validate(request, errors));
+        assertEquals("Invalid loan amount!", actual.getValidationError());
+    }
+
+    @Test
+    void givenTooHighLoanAmount_whenRequestValidation_thenShouldThrowValidationException() {
         int tooHighLoanAmount = DecisionEngineConstants.MAXIMUM_LOAN_AMOUNT + 1;
 
-        DecisionRequestDTO requestLow = new DecisionRequestDTO(validPersonalCode, tooLowLoanAmount, 12);
-        BeanPropertyBindingResult errorsLow = new BeanPropertyBindingResult(requestLow, "request");
+        DecisionRequestDTO request = new DecisionRequestDTO(validPersonalCode, tooHighLoanAmount, 12);
 
-        ValidationException exceptionLow = assertThrows(ValidationException.class,
-                () -> validator.validate(requestLow, errorsLow));
-        assertEquals("Invalid loan amount!", exceptionLow.getValidationError());
-
-        DecisionRequestDTO requestHigh = new DecisionRequestDTO(validPersonalCode, tooHighLoanAmount, 12);
-        BeanPropertyBindingResult errorsHigh = new BeanPropertyBindingResult(requestHigh, "request");
-
-        ValidationException exceptionHigh = assertThrows(ValidationException.class,
-                () -> validator.validate(requestHigh, errorsHigh));
-        assertEquals("Invalid loan amount!", exceptionHigh.getValidationError());
+        ValidationException actual = assertThrows(ValidationException.class,
+                () -> validator.validate(request, errors));
+        assertEquals("Invalid loan amount!", actual.getValidationError());
     }
 
     @Test
-    void testInvalidLoanPeriod() {
+    void givenTooShortLoanPeriod_whenRequestValidation_thenShouldThrowValidationException() {
         int tooShortLoanPeriod = DecisionEngineConstants.MINIMUM_LOAN_PERIOD - 1;
+
+        DecisionRequestDTO request = new DecisionRequestDTO(validPersonalCode, 4000, tooShortLoanPeriod);
+
+        ValidationException actual = assertThrows(ValidationException.class,
+                () -> validator.validate(request, errors));
+        assertEquals("Invalid loan period!", actual.getValidationError());
+    }
+    @Test
+    void givenTooLongLoanPeriod_whenRequestValidation_thenShouldThrowValidationException() {
         int tooLongLoanPeriod = DecisionEngineConstants.MAXIMUM_LOAN_PERIOD + 1;
 
-        DecisionRequestDTO requestShort = new DecisionRequestDTO(validPersonalCode, 4000, tooShortLoanPeriod);
-        BeanPropertyBindingResult errorsShort = new BeanPropertyBindingResult(requestShort, "request");
+        DecisionRequestDTO request = new DecisionRequestDTO(validPersonalCode, 4000, tooLongLoanPeriod);
 
-        ValidationException exceptionShort = assertThrows(ValidationException.class,
-                () -> validator.validate(requestShort, errorsShort));
-        assertEquals("Invalid loan period!", exceptionShort.getValidationError());
-
-        DecisionRequestDTO requestLong = new DecisionRequestDTO(validPersonalCode, 4000, tooLongLoanPeriod);
-        BeanPropertyBindingResult errorsLong = new BeanPropertyBindingResult(requestLong, "request");
-
-        ValidationException exceptionLong = assertThrows(ValidationException.class,
-                () -> validator.validate(requestLong, errorsLong));
-        assertEquals("Invalid loan period!", exceptionLong.getValidationError());
+        ValidationException actual = assertThrows(ValidationException.class,
+                () -> validator.validate(request, errors));
+        assertEquals("Invalid loan period!", actual.getValidationError());
     }
 
     @Test
-    void testInvalidAge() {
+    void givenUnderAgePersonalCode_whenRequestValidation_thenShouldThrowValidationException() {
         String underAgePersonalCode = "51107121760";
+
+        DecisionRequestDTO request = new DecisionRequestDTO(underAgePersonalCode, 4000, 12);
+
+        ValidationException actual = assertThrows(ValidationException.class,
+                () -> validator.validate(request, errors));
+        assertEquals("Invalid age!", actual.getValidationError());
+    }
+
+    @Test
+    void givenOverAgePersonalCode_whenRequestValidation_thenShouldThrowValidationException() {
         String overAgePersonalCode = "29912120004";
 
-        DecisionRequestDTO requestShort = new DecisionRequestDTO(underAgePersonalCode, 4000, 12);
-        BeanPropertyBindingResult errorsShort = new BeanPropertyBindingResult(requestShort, "request");
+        DecisionRequestDTO request = new DecisionRequestDTO(overAgePersonalCode, 4000, 12);
 
-        ValidationException exceptionShort = assertThrows(ValidationException.class,
-                () -> validator.validate(requestShort, errorsShort));
-        assertEquals("Invalid age!", exceptionShort.getValidationError());
+        ValidationException actual = assertThrows(ValidationException.class,
+                () -> validator.validate(request, errors));
+        assertEquals("Invalid age!", actual.getValidationError());
+    }
 
-        DecisionRequestDTO requestLong = new DecisionRequestDTO(overAgePersonalCode, 4000, 12);
-        BeanPropertyBindingResult errorsLong = new BeanPropertyBindingResult(requestLong, "request");
+    @Test
+    void givenInvalidDateOfBirthInPersonalCode_whenRequestValidation_thenShouldThrowValidationException() {
+        String personalCodeWithDateOfBirthInFuture = "69901010237";
 
-        ValidationException exceptionLong = assertThrows(ValidationException.class,
-                () -> validator.validate(requestLong, errorsLong));
-        assertEquals("Invalid age!", exceptionLong.getValidationError());
+        DecisionRequestDTO requestShort = new DecisionRequestDTO(personalCodeWithDateOfBirthInFuture, 4000, 12);
+
+        ValidationException actual = assertThrows(ValidationException.class,
+                () -> validator.validate(requestShort, errors));
+        assertEquals("Invalid age!", actual.getValidationError());
+    }
+
+    @Test
+    void givenValidRequest_whenRequestValidation_thenShouldNotThrowValidationException() {
+        DecisionRequestDTO requestShort = new DecisionRequestDTO("38411266610", 4000, 12);
+
+        Executable e = () -> validator.validate(requestShort, errors);
+
+        assertDoesNotThrow(e);
     }
 }
