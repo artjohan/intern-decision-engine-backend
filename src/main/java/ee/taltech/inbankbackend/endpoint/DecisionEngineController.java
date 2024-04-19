@@ -1,32 +1,33 @@
 package ee.taltech.inbankbackend.endpoint;
 
-import ee.taltech.inbankbackend.exceptions.InvalidLoanAmountException;
-import ee.taltech.inbankbackend.exceptions.InvalidLoanPeriodException;
-import ee.taltech.inbankbackend.exceptions.InvalidPersonalCodeException;
-import ee.taltech.inbankbackend.exceptions.NoValidLoanException;
-import ee.taltech.inbankbackend.service.Decision;
+import ee.taltech.inbankbackend.model.DecisionDTO;
+import ee.taltech.inbankbackend.model.DecisionRequestDTO;
+import ee.taltech.inbankbackend.model.DecisionResponseDTO;
 import ee.taltech.inbankbackend.service.DecisionEngine;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import ee.taltech.inbankbackend.validation.DecisionRequestValidator;
+import ee.taltech.inbankbackend.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/loan")
 @CrossOrigin
+@RequiredArgsConstructor
 public class DecisionEngineController {
 
     private final DecisionEngine decisionEngine;
-    private final DecisionResponse response;
 
-    @Autowired
-    DecisionEngineController(DecisionEngine decisionEngine, DecisionResponse response) {
-        this.decisionEngine = decisionEngine;
-        this.response = response;
+    @InitBinder
+    protected void initBinder(WebDataBinder binder) {
+        binder.setValidator(new DecisionRequestValidator());
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<?> handleValidationException(ValidationException e) {
+        return ResponseEntity.badRequest().body(new DecisionResponseDTO(e.getValidationError()));
     }
 
     /**
@@ -43,33 +44,12 @@ public class DecisionEngineController {
      * @return A ResponseEntity with a DecisionResponse body containing the approved loan amount and period, and an error message (if any)
      */
     @PostMapping("/decision")
-    public ResponseEntity<DecisionResponse> requestDecision(@RequestBody DecisionRequest request) {
-        try {
-            Decision decision = decisionEngine.
-                    calculateApprovedLoan(request.getPersonalCode(), request.getLoanAmount(), request.getLoanPeriod());
-            response.setLoanAmount(decision.getLoanAmount());
-            response.setLoanPeriod(decision.getLoanPeriod());
-            response.setErrorMessage(decision.getErrorMessage());
+    public ResponseEntity<DecisionResponseDTO> requestDecision(@RequestBody @Validated DecisionRequestDTO request) {
+        DecisionDTO decision = decisionEngine.
+                calculateApprovedLoan(request.getPersonalCode(), request.getLoanAmount(), request.getLoanPeriod());
 
-            return ResponseEntity.ok(response);
-        } catch (InvalidPersonalCodeException | InvalidLoanAmountException | InvalidLoanPeriodException e) {
-            response.setLoanAmount(null);
-            response.setLoanPeriod(null);
-            response.setErrorMessage(e.getMessage());
+        DecisionResponseDTO response = new DecisionResponseDTO(decision.getLoanAmount(), decision.getLoanPeriod(), decision.getErrorMessage());
 
-            return ResponseEntity.badRequest().body(response);
-        } catch (NoValidLoanException e) {
-            response.setLoanAmount(null);
-            response.setLoanPeriod(null);
-            response.setErrorMessage(e.getMessage());
-
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        } catch (Exception e) {
-            response.setLoanAmount(null);
-            response.setLoanPeriod(null);
-            response.setErrorMessage("An unexpected error occurred");
-
-            return ResponseEntity.internalServerError().body(response);
-        }
+        return ResponseEntity.ok(response);
     }
 }
